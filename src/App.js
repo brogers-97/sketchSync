@@ -1,8 +1,22 @@
 import React, {useEffect, useRef, useState} from 'react';
+import io from 'socket.io-client'
 import './App.css';
+const socket = io('http://localhost:3001')
 
 
 function App() {
+
+
+  useEffect(() => {
+    socket.on('connect', () => {
+      console.log('Connected to backend')
+    })
+    socket.on('draw_action', (data) => {
+      console.log('Drawing action received:',data)
+    })
+  })
+
+
   const [isDrawing, setIsDrawing] = useState(false)
   const canvasRef = useRef(null)
   const isDrawingRef = useRef(isDrawing);
@@ -11,6 +25,29 @@ function App() {
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d')
+
+
+
+    //PIXEL CONTROL
+
+    const resizeCanvas = () => {
+      const container = document.querySelector('.main-container')
+      const {width, height} = container.getBoundingClientRect()
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      canvas.style.width = `${width}px`
+      canvas.style.height = `${height}px`
+
+      context.scale(dpr, dpr)
+    }
+
+    resizeCanvas()
+    window.addEventListener('resize', resizeCanvas)
+
+
+
 
     //MAIN DRAW FUNCTIONS
 
