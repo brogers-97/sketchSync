@@ -6,8 +6,7 @@ const socket = io('http://localhost:3001')
 
 function App() {
   const [isDrawing, setIsDrawing] = useState(false)
-  const [square, setSquare] = useState(false)
-  const [newTool, setNewTool] = useState(false)
+  const [newTool, setNewTool] = useState("draw")
   const canvasRef = useRef(null)
   const isDrawingRef = useRef(isDrawing);
 
@@ -73,6 +72,7 @@ function App() {
     let lastX, lastY;
 
     function startDrawing(e) {
+      if(newTool !== "draw") return;
         isDrawingRef.current = true
         context.beginPath()
         const {x, y} = getMousePos(canvas, e)
@@ -81,6 +81,7 @@ function App() {
     }
 
     function endDrawing(e) {
+      if(newTool !== "draw") return;
       isDrawingRef.current = false
       lastX = undefined
       lastY = undefined
@@ -98,7 +99,7 @@ function App() {
     }
 
     function draw(e) {
-      if(!isDrawingRef.current || square) return;
+      if(!isDrawingRef.current) return;
       
         //data sent to server
         let {x,y} = getMousePos(canvas, e)
@@ -114,7 +115,7 @@ function App() {
       context.stroke()
     }
     
-    if(square === true){
+    if(newTool === "square"){
       window.removeEventListener("mousedown", startDrawing)
       window.removeEventListener("mouseup", endDrawing)
       window.removeEventListener("mousemove", draw)
@@ -127,9 +128,16 @@ function App() {
     
   }, [newTool])
 
-  useEffect (() => {
+
+
+  // SQUARE TOOL
+
+  useEffect(() => {
     const canvas = canvasRef.current;
-    const context = canvas.getContext('2d')
+    const context = canvas.getContext('2d');
+  
+    let isDrawingSquare = false; // Track whether we're currently drawing a square
+    let start = {}; // Starting point for the square
 
     function getMousePos(canvas, evt) {
       var rect = canvas.getBoundingClientRect(),
@@ -141,25 +149,49 @@ function App() {
         y: (evt.clientY - rect.top) * scaleY
       }
     }
-
-    if(square === true){
-      
-      let start ={}
-      
-      function startRect(e) {
-        start = getMousePos(canvas, e)
-      }
-      
-      function endRect(e) {
-        let {x,y} = getMousePos(canvas, e)
-        context.fillRect(start.x, start.y, x - start.x, y - start.y)
-      }
-      
-      window.addEventListener("mousedown", startRect)
-      window.addEventListener("mousemove", endRect)
+  
+    function startRect(e) {
+      isDrawingSquare = true; // Set drawing state to true
+      start = getMousePos(canvas, e); // Save the start position
     }
-
-  }, [newTool])
+    
+    function drawRect(e) {
+      if (!isDrawingSquare) return; // Only draw if isDrawingSquare is true
+      const end = getMousePos(canvas, e); // Current mouse position
+      
+      // Clear any existing drawing on the canvas
+      // Optionally, you could only clear the last drawn square instead of the whole canvas
+      context.clearRect(0, 0, canvas.width, canvas.height);
+  
+      // Calculate width and height of the rectangle
+      const width = end.x - start.x;
+      const height = end.y - start.y;
+  
+      // Draw the rectangle
+      context.beginPath();
+      context.rect(start.x, start.y, width, height);
+      context.stroke();
+    }
+  
+    function endRect() {
+      if (!isDrawingSquare) return; // Exit if we weren't drawing
+      isDrawingSquare = false; // Reset drawing state
+    }
+  
+    if (newTool === "square") {
+      canvas.addEventListener("mousedown", startRect);
+      canvas.addEventListener("mousemove", drawRect);
+      window.addEventListener("mouseup", endRect); // Use window to ensure we catch mouseup even if the mouse leaves the canvas
+    }
+  
+    // Cleanup function to remove event listeners
+    return () => {
+      canvas.removeEventListener("mousedown", startRect);
+      canvas.removeEventListener("mousemove", drawRect);
+      window.removeEventListener("mouseup", endRect);
+    };
+  
+  }, [newTool]);
 
 
 
@@ -192,14 +224,11 @@ function App() {
     context.clearRect(0,0,canvas.width,canvas.height)
   }
   const isSquare = () => {
-    if(square == false){
-      setSquare(true)
-      setNewTool(!newTool)
+    if(newTool !== "square"){
+      setNewTool("square")
     } else {
-      setSquare(false)
-      setNewTool(!newTool)
+      setNewTool("draw")
     }
-    console.log(square)
   }
 
 
