@@ -7,6 +7,7 @@ const socket = io('http://localhost:3001')
 function App() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [newTool, setNewTool] = useState("draw")
+  const [savedCanvas, setSavedCanvas] = useState([])
   const canvasRef = useRef(null)
   const isDrawingRef = useRef(isDrawing);
 
@@ -61,6 +62,27 @@ function App() {
 
     resizeCanvas()
     window.addEventListener('resize', resizeCanvas)
+
+    
+
+    const saveCanvasState = () => {
+      const canvas = canvasRef.current
+      const imageDataUrl = canvas.toDataURL('image/png')
+      setSavedCanvas([...savedCanvas, imageDataUrl ])
+    }
+  
+    const restoreCanvasState = () => {
+      if (!savedCanvas) return;
+  
+      const canvas = canvasRef.current
+      const context = canvas.getContext('2d')
+      const img = new Image()
+      img.onload = () => {
+        context.clearRect(0, 0, canvas.width, canvas.height)
+        context.drawImage(img, 0,0, canvas.width, canvas.height)
+      }
+      img.src = savedCanvas[savedCanvas.length -1]
+    }
 
 
 
@@ -136,8 +158,8 @@ function App() {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
   
-    let isDrawingSquare = false; // Track whether we're currently drawing a square
-    let start = {}; // Starting point for the square
+    let isDrawingSquare = false; 
+    let start = {}; 
 
     function getMousePos(canvas, evt) {
       var rect = canvas.getBoundingClientRect(),
@@ -151,40 +173,33 @@ function App() {
     }
   
     function startRect(e) {
-      isDrawingSquare = true; // Set drawing state to true
-      start = getMousePos(canvas, e); // Save the start position
+      isDrawingSquare = true; 
+      start = getMousePos(canvas, e); 
     }
     
     function drawRect(e) {
-      if (!isDrawingSquare) return; // Only draw if isDrawingSquare is true
-      const end = getMousePos(canvas, e); // Current mouse position
-      
-      // Clear any existing drawing on the canvas
-      // Optionally, you could only clear the last drawn square instead of the whole canvas
+      if (!isDrawingSquare) return; 
+      const end = getMousePos(canvas, e); 
       context.clearRect(0, 0, canvas.width, canvas.height);
-  
-      // Calculate width and height of the rectangle
       const width = end.x - start.x;
       const height = end.y - start.y;
-  
-      // Draw the rectangle
       context.beginPath();
       context.rect(start.x, start.y, width, height);
       context.stroke();
     }
   
     function endRect() {
-      if (!isDrawingSquare) return; // Exit if we weren't drawing
-      isDrawingSquare = false; // Reset drawing state
+      if (!isDrawingSquare) return;
+      isDrawingSquare = false;
     }
   
     if (newTool === "square") {
       canvas.addEventListener("mousedown", startRect);
       canvas.addEventListener("mousemove", drawRect);
-      window.addEventListener("mouseup", endRect); // Use window to ensure we catch mouseup even if the mouse leaves the canvas
+      window.addEventListener("mouseup", endRect);
     }
-  
-    // Cleanup function to remove event listeners
+    
+    
     return () => {
       canvas.removeEventListener("mousedown", startRect);
       canvas.removeEventListener("mousemove", drawRect);
@@ -197,7 +212,24 @@ function App() {
 
 
 
+  const saveCanvasState = () => {
+    const canvas = canvasRef.current
+    const imageDataUrl = canvas.toDataURL('image/png')
+    setSavedCanvas([...savedCanvas, imageDataUrl ])
+  }
 
+  const restoreCanvasState = () => {
+    if (!savedCanvas) return;
+
+    const canvas = canvasRef.current
+    const context = canvas.getContext('2d')
+    const img = new Image()
+    img.onload = () => {
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.drawImage(img, 0,0, canvas.width, canvas.height)
+    }
+    img.src = savedCanvas[savedCanvas.length -1]
+  }
 
 
 
@@ -247,6 +279,8 @@ function App() {
       <div className='toolbar'>
         <button onClick={clearCanvas}>Clear</button>
         <button onClick={isSquare}>Square</button>
+        <button onClick={saveCanvasState}>Save</button>
+        <button onClick={restoreCanvasState}>Load</button>
       </div>
     </div>
   )
