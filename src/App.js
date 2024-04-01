@@ -8,6 +8,9 @@ function App() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [newTool, setNewTool] = useState("draw")
   const [savedCanvas, setSavedCanvas] = useState([])
+  const [dontDraw, setDontDraw] = useState(false)
+  const [lineColor, setLineColor] = useState('red')
+  const undoButtonRef = useRef(null)
   const canvasRef = useRef(null)
   const isDrawingRef = useRef(isDrawing);
 
@@ -24,10 +27,21 @@ function App() {
       console.log('Connected to backend')
     })
     socket.on('draw_action', (data) => {
-      console.log('Drawing action received:',data)
       updateCanvas(data)
     })
   })
+
+  useEffect(() => {
+    const handleMouseOver = () => {
+      console.log('undo button')
+      setDontDraw(true)
+    }
+    const button = undoButtonRef.current
+    if (button) {
+      button.addEventListener('mouseover', handleMouseOver)
+    }
+    
+  }, [])
 
 
   
@@ -68,24 +82,11 @@ function App() {
     const saveCanvasState = () => {
       const canvas = canvasRef.current
       const imageDataUrl = canvas.toDataURL('image/png')
-      setSavedCanvas([...savedCanvas, imageDataUrl ])
+      setSavedCanvas([savedCanvas.push(imageDataUrl)])
+      // console.log(savedCanvas)
     }
   
-    const restoreCanvasState = () => {
-      if (!savedCanvas) return;
-  
-      const canvas = canvasRef.current
-      const context = canvas.getContext('2d')
-      const img = new Image()
-      img.onload = () => {
-        context.clearRect(0, 0, canvas.width, canvas.height)
-        context.drawImage(img, 0,0, canvas.width, canvas.height)
-      }
-      img.src = savedCanvas[savedCanvas.length -1]
-    }
-
-
-
+    
 
 
 
@@ -96,6 +97,7 @@ function App() {
     function startDrawing(e) {
       if(newTool !== "draw") return;
         isDrawingRef.current = true
+        context.strokeStyle = lineColor
         context.beginPath()
         const {x, y} = getMousePos(canvas, e)
         lastX = x
@@ -104,9 +106,14 @@ function App() {
 
     function endDrawing(e) {
       if(newTool !== "draw") return;
-      isDrawingRef.current = false
-      lastX = undefined
-      lastY = undefined
+      if (isDrawingRef.current) {
+        isDrawingRef.current = false;
+        if(dontDraw === false){
+          saveCanvasState(); 
+        }
+        lastX = undefined;
+        lastY = undefined;
+      }
     }
     
     function getMousePos(canvas, evt) {
@@ -212,24 +219,7 @@ function App() {
 
 
 
-  const saveCanvasState = () => {
-    const canvas = canvasRef.current
-    const imageDataUrl = canvas.toDataURL('image/png')
-    setSavedCanvas([...savedCanvas, imageDataUrl ])
-  }
-
-  const restoreCanvasState = () => {
-    if (!savedCanvas) return;
-
-    const canvas = canvasRef.current
-    const context = canvas.getContext('2d')
-    const img = new Image()
-    img.onload = () => {
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      context.drawImage(img, 0,0, canvas.width, canvas.height)
-    }
-    img.src = savedCanvas[savedCanvas.length -1]
-  }
+  
 
 
 
@@ -243,7 +233,7 @@ function App() {
     context.stroke()
   }
 
-
+  
 
 
 
@@ -255,13 +245,26 @@ function App() {
     const context = canvas.getContext('2d')
     context.clearRect(0,0,canvas.width,canvas.height)
   }
-  const isSquare = () => {
-    if(newTool !== "square"){
-      setNewTool("square")
-    } else {
-      setNewTool("draw")
+  // const isSquare = () => {
+  //   if(newTool !== "square"){
+  //     setNewTool("square")
+  //   } else {
+  //     setNewTool("draw")
+  //   }
+  // }
+
+
+  const undoButton = () => {
+      const canvas = canvasRef.current
+      const context = canvas.getContext('2d')
+      const img = new Image()
+      img.onload = () => {
+        context.clearRect(0, 0, canvas.width, canvas.height)
+        context.drawImage(img, 0,0, canvas.width, canvas.height)
+      }
+      img.src = savedCanvas[savedCanvas.length -1]
+      setDontDraw(false)
     }
-  }
 
 
 
@@ -278,9 +281,9 @@ function App() {
       <canvas ref={canvasRef} className='canvas'></canvas>
       <div className='toolbar'>
         <button onClick={clearCanvas}>Clear</button>
-        <button onClick={isSquare}>Square</button>
-        <button onClick={saveCanvasState}>Save</button>
-        <button onClick={restoreCanvasState}>Load</button>
+        <button onClick={() => setLineColor('red')}>Red</button>
+        {/* <button onClick={isSquare}>Square</button> */}
+        <button ref={undoButtonRef} onClick={undoButton}>Undo</button>
       </div>
     </div>
   )
